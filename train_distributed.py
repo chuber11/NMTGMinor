@@ -492,12 +492,6 @@ def main(gpu, opt):
 
     # Multi-data set handling
     else:
-        if opt.dataset_factors is not None:
-            dataset_factors = {int(df.split(":")[0]): int(df.split(":")[1]) for df in opt.dataset_factors.split(",")}
-            print("Dataset factors:", dataset_factors)
-        else:
-            dataset_factors = {}
-
         lprint("[INFO] Reading multiple dataset ...")
 
         dicts = torch.load(opt.data + ".dict.pt")
@@ -523,6 +517,15 @@ def main(gpu, opt):
                 if dir_.startswith("valid"):
                     idx = int(dir_.split(".")[1])
                     valid_dirs[idx] = dir_
+
+        if opt.dataset_factors is not None:
+            if "," in opt.dataset_factors:
+                dataset_factors = {int(df.split(":")[0]): int(df.split(":")[1]) for df in opt.dataset_factors.split(",")}
+            else:
+                dataset_factors = {i:int(opt.dataset_factors) for i in range(len(train_dirs))}
+            print("Dataset factors:", dataset_factors)
+        else:
+            dataset_factors = {}
 
         train_sets, valid_sets = list(), list()
 

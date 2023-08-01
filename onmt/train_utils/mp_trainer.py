@@ -30,6 +30,7 @@ import warnings
 from onmt.constants import add_tokenidx
 import dill
 from multiprocessing.managers import ListProxy as ListProxy
+from tqdm import tqdm
 
 # ignore the pytorch -> numpy conversion warnings
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -419,14 +420,17 @@ class Trainer(object):
     def save(self, epoch, valid_ppl, itr=None):
 
         opt = self.opt
-        model = self.model
+        if isinstance(self.model, torch.nn.parallel.DistributedDataParallel):
+            model = self.model.module
+        else:
+            model = self.model
         dicts = self.dicts
 
-        if isinstance(model, torch.nn.parallel.DistributedDataParallel):
-            model_state_dict = self.model.module.state_dict()
-        else:
-            model_state_dict = self.model.state_dict()
+        model_state_dict = model.state_dict()
         optim_state_dict = self.optim.state_dict()
+
+        if opt.save_only_factorization_weights:
+            model_state_dict = {n:model_state_dict[n] for n,p in model.named_parameters() if p.requires_grad}
 
         if itr:
             itr_state_dict = itr.state_dict()
@@ -1556,6 +1560,9 @@ class Trainer(object):
 
         self.start_time = time.time()
 
+        best_valid_ppl = 1000000
+        best_valid_epoch = 0
+
         for epoch in range(start_epoch, start_epoch + opt.epochs):
             self.print('')
 
@@ -1582,7 +1589,14 @@ class Trainer(object):
                         value = self.model.choose_best_epoch_by
                 else:
                     value = 1 - valid_accuracy
+
                 self.save(epoch, value)
+
+                if value < best_valid_ppl:
+                    best_valid_ppl = value
+                    best_valid_epoch = epoch
+                elif best_valid_epoch + 5 < epoch: # no improvement for 5 epochs -> stop training
+                    break
 
             itr_progress = None
             resume = False

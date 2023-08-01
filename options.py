@@ -588,6 +588,9 @@ def make_parser(parser):
     parser.add_argument('-decoder_layers_memory', type=int, default=6,
                         help="Number of memory encoder layers")
 
+    parser.add_argument('-save_only_factorization_weights', action="store_true",
+                        help="Whether to only store the factorization weights of the model")
+
     return parser
 
 

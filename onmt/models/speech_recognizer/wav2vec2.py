@@ -751,6 +751,16 @@ class Wav2vecBERT(Wav2vecTransformer):
         if self.ctc:
             self.ctc_linear = nn.Linear(encoder.model_size, self.tgt_vocab_size)
 
+    def run_encoder(self, src, batch_first_output=False, # src: l_src1 x b x d_model
+                    src_lang=None, src_atb=None,
+                    checkpointing_ffn=False,
+                    checkpointing_self_attn=False):
+        # dict with keys context: l_src2 x b x d_model, src_mask: b x l_src2
+        return self.encoder(src.transpose(0, 1), batch_first_output=batch_first_output,
+                            lang=src_lang, atb=src_atb,
+                            checkpointing_ffn=checkpointing_ffn,
+                            checkpointing_self_attn=checkpointing_self_attn)
+
     def forward(self, batch, zero_encoder=False, factorize=False, target_mask=None, mirror=False,
                 checkpointing_ffn=False,
                 checkpointing_cross_attn=False,
@@ -783,25 +793,21 @@ class Wav2vecBERT(Wav2vecTransformer):
 
         org_src = src
         org_tgt = tgt
-        src = src.transpose(0, 1)  # transpose to have batch first
         tgt = tgt.transpose(0, 1)
 
         batch_first_output = False
         if hasattr(self.decoder, 'dec_pretrained_model') and self.decoder.dec_pretrained_model in ["bart"]:
             batch_first_output = True
 
-        # print(src_lang, src_atb, tgt_lang, tgt_atb)
-
-        # during training mixture is always None
-        encoder_output = self.encoder(src, batch_first_output=batch_first_output,
-                                      lang=src_lang, atb=src_atb,
-                                      checkpointing_ffn=checkpointing_ffn,
-                                      checkpointing_self_attn=checkpointing_self_attn)
-
+        if src is not None:
+            encoder_output = self.run_encoder(src, batch_first_output, src_lang, src_atb,
+                                              checkpointing_ffn, checkpointing_self_attn)
+            context, src_attention_mask = encoder_output['context'], encoder_output['src_mask']
+        else:
+            context, src_attention_mask = batch.get("src_features"), batch.get("src_features_mask")
+            encoder_output = {"context":context, "src":src_attention_mask}
         encoder_output = defaultdict(lambda: None, encoder_output)
 
-        context = encoder_output['context']
-        src_attention_mask = encoder_output['src']
         contrastive_loss = 0
 
         if hasattr(self.decoder, 'dec_pretrained_model') and self.decoder.dec_pretrained_model in ["bert", "roberta"]:
@@ -1217,16 +1223,6 @@ class Wav2vecBERTMemory(Wav2vecBERT):
             self.memory_cache_length += self.memory_cache[-1].shape[0]
 
         return encoder_output_memory, memory_text_enc
-
-    def run_encoder(self, src, batch_first_output=False, # src: l_src1 x b x d_model
-                    src_lang=None, src_atb=None,
-                    checkpointing_ffn=False,
-                    checkpointing_self_attn=False):
-        # dict with keys context: l_src2 x b x d_model, src_mask: b x l_src2
-        return self.encoder(src.transpose(0, 1), batch_first_output=batch_first_output,
-                            lang=src_lang, atb=src_atb,
-                            checkpointing_ffn=checkpointing_ffn,
-                            checkpointing_self_attn=checkpointing_self_attn)
 
     def forward(self, batch, zero_encoder=False, factorize=False, target_mask=None, mirror=False,
                 checkpointing_ffn=False,
