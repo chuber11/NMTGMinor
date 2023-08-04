@@ -760,20 +760,23 @@ class Dataset(torch.utils.data.Dataset):
                 self.batches = allocate_batch_unbalanced(sorted_order, data_lengths,
                                                          src_sizes, tgt_sizes,
                                                          batch_size_frames, batch_size_words,
-                                                         batch_size_sents, self.multiplier,
+                                                         batch_size_sents, multiplier,
                                                          self.max_src_len, self.max_tgt_len,
                                                          self.min_src_len, self.min_tgt_len, self.cleaning,
                                                          cut_off_size, smallest_batch_size)
             else:
                 self.batches = allocate_batch(sorted_order, data_lengths,
                                               src_sizes, tgt_sizes,
-                                              batch_size_words, batch_size_sents, self.multiplier,
+                                              batch_size_words, batch_size_sents, multiplier,
                                               self.max_src_len, self.max_tgt_len,
                                               self.min_src_len, self.min_tgt_len, self.cleaning)
 
         # the second to last mini-batch is likely the largest
         # (the last one can be the remnant after grouping samples which has less than max size)
         self.largest_batch_id = len(self.batches) - 3
+
+        if dataset_factor is not None:
+            self.batches = [b for b in self.batches for _ in range(dataset_factor)]
 
         self.num_batches = len(self.batches)
         self.batch_sizes = [len(x) for x in self.batches]

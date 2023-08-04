@@ -130,11 +130,17 @@ class SpeechBinarizer:
                     if verbose:
                         print("processing wav file ...", wavpath, start_time, end_time)
                     # feature_vector = safe_readaudio(wavpath, start_time, end_time, sample_rate=sample_rate)
-                    feature_vector = ark_loader.load_wav(wavpath, start_time, end_time, sample_rate=sample_rate)
+                    if start_time == 0 or end_time == -1:
+                        feature_vector = ark_loader.load_wav(wavpath, start_time, end_time,sample_rate=sample_rate)
+                    else:
+                        feature_vector = None
                     # store a tuple of data and information to load the wav again during training
                     data.append((wavpath, start_time, end_time, sample_rate))
 
-                length = feature_vector.size(0)
+                if feature_vector is not None:
+                    length = feature_vector.size(0)
+                else:
+                    length = int(16000 * (end_time - start_time))
                 lengths.append(length)
                 # if verbose and length > 256000:
                 #     print('length: ', length)

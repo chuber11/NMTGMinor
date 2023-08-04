@@ -157,6 +157,8 @@ parser.add_argument('-external_tokenizer', default="",
 parser.add_argument('-new_words_file', type=str, default="new_words.txt",
                     help="New words for memory, each line should contain one word/phrase for the memory")
 
+parser.add_argument('-load_factorization_weights',
+                    help='Path to model .pt baseline weights file (factorization weights have to be in -model)')
 
 def _is_oversized(batch, new_sent_size, batch_size):
     """
@@ -230,6 +232,8 @@ def main():
         outF = sys.stdout
     else:
         outF = open(opt.output, 'w')
+
+    print(opt)
 
     pred_score_total, pred_words_total, gold_score_total, gold_words_total = 0, 0, 0, 0
 

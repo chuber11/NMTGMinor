@@ -16,6 +16,7 @@ from options import make_parser
 from collections import defaultdict
 from onmt.constants import add_tokenidx
 import os
+import sys
 import numpy as np
 import warnings
 import dill
@@ -741,6 +742,10 @@ if __name__ == "__main__":
     parser = make_parser(parser)
 
     opt = parser.parse_args()
+
+    if opt.cache_encoder_output and (not opt.freeze_encoder or opt.multilingual_factorized_weights):
+        print("ERROR: Can not cache encoder output but have learnable weights in the encoder!")
+        sys.exit()
 
     # An ugly hack to have weight norm on / off
     onmt.constants.weight_norm = opt.weight_norm

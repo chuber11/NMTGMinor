@@ -98,6 +98,10 @@ class Translator(object):
                 #     model.decoder.renew_buffer(self.opt.max_sent_length)
                 model.renew_buffer(self.opt.max_sent_length)
 
+            if hasattr(opt, "load_factorization_weights") and opt.load_factorization_weights:
+                checkpoint_f = torch.load(opt.load_factorization_weights, map_location=lambda storage, loc: storage)
+                model.load_state_dict(checkpoint_f['model'])
+
             if opt.fp16:
                 model = model.half()
 
